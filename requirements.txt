@@ -1,2 +1,5 @@
+awacs
+awscliv2
 boto3
 troposphere
+
