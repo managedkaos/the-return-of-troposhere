@@ -1,0 +1,66 @@
+Description: This is the CloudFormation stack.
+Outputs:
+  ProductionEnvironment:
+    Description: ProductionEnvironment
+    Value: !GetAtt 'ProductionEnvironment.ServiceUrl'
+  StagingEnvironment:
+    Description: StagingEnvironment
+    Value: !GetAtt 'StagingEnvironment.ServiceUrl'
+Resources:
+  AccessKeys:
+    Properties:
+      UserName: !Ref 'ServiceAccount'
+    Type: AWS::IAM::AccessKey
+  AppRunnerAdmin:
+    Properties:
+      GroupName: !Sub '${AWS::StackName}'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSAppRunnerFullAccess
+    Type: AWS::IAM::Group
+  AppRunnerServiceRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - build.apprunner.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
+      RoleName: !Sub '${AWS::StackName}'
+    Type: AWS::IAM::Role
+  ImageRepository:
+    Properties:
+      RepositoryName: !Sub '${AWS::StackName}'
+    Type: AWS::ECR::Repository
+  ProductionEnvironment:
+    Properties:
+      ServiceName: awesome-application-production
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          AccessRoleArn: !GetAtt 'AppRunnerServiceRole.Arn'
+        AutoDeploymentsEnabled: false
+        ImageRepository:
+          ImageIdentifier: public.ecr.aws/aws-containers/hello-app-runner:latest
+          ImageRepositoryType: ECR_PUBLIC
+    Type: AWS::AppRunner::Service
+  ServiceAccount:
+    Properties:
+      Groups:
+        - !Ref 'AppRunnerAdmin'
+      UserName: !Sub '${AWS::StackName}'
+    Type: AWS::IAM::User
+  StagingEnvironment:
+    Properties:
+      ServiceName: awesome-application-staging
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          AccessRoleArn: !GetAtt 'AppRunnerServiceRole.Arn'
+        AutoDeploymentsEnabled: false
+        ImageRepository:
+          ImageIdentifier: public.ecr.aws/aws-containers/hello-app-runner:latest
+          ImageRepositoryType: ECR_PUBLIC
+    Type: AWS::AppRunner::Service
+
